@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=PT+Sans:wght@400;700&display=swap');
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -58,184 +56,82 @@
   --color-sidebar-accent-border: var(--sidebar-accent-border);
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
-  --font-sans: 'PT Sans', sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --font-display: 'Oswald', sans-serif;
+  --font-sans: 'Google Sans', 'Google Sans Text', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 16px);
 }
 
-/* LIGHT MODE */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
-
-  --opaque-button-border-intensity: -8;
-
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
-
-  /* Light military mode */
-  --background: 40 10% 90%; 
-  --foreground: 0 0% 15%; 
-  --border: 40 10% 80%; 
-
-  --card: 40 10% 88%; 
-  --card-foreground: 0 0% 15%; 
-  --card-border: 40 10% 75%; 
-
-  --sidebar: 40 10% 86%;
-  --sidebar-foreground: 0 0% 15%;
-  --sidebar-border: 40 10% 75%;
-  --sidebar-primary: 80 40% 30%;
-  --sidebar-primary-foreground: 40 20% 95%;
-  --sidebar-accent: 40 10% 80%;
-  --sidebar-accent-foreground: 0 0% 15%;
-  --sidebar-ring: 80 40% 30%;
-
-  --popover: 40 10% 90%;
-  --popover-foreground: 0 0% 15%;
-  --popover-border: 40 10% 80%;
-
-  --primary: 80 40% 30%;
-  --primary-foreground: 40 20% 95%;
-
-  --secondary: 40 10% 80%;
-  --secondary-foreground: 0 0% 15%;
-
-  --muted: 40 10% 80%;
-  --muted-foreground: 0 0% 35%;
-
-  --accent: 40 10% 80%;
-  --accent-foreground: 0 0% 15%;
-
-  --destructive: 0 60% 40%;
-  --destructive-foreground: 0 0% 95%;
-
-  --input: 40 10% 75%;
-  --ring: 80 40% 30%;
-  --chart-1: 80 40% 30%;
-  --chart-2: 0 0% 30%;
-  --chart-3: 40 20% 40%;
-  --chart-4: 0 60% 40%;
-  --chart-5: 200 30% 40%;
-
-  --app-font-sans: 'PT Sans', sans-serif;
-  --app-font-serif: Georgia, serif;
-  --app-font-mono: 'JetBrains Mono', monospace;
-  
-  --radius: 0rem; /* Brutalist sharp corners */
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.1);
-  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.1);
-  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.1), 0px 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.1), 0px 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.1), 0px 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.1);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
-
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --primary-border: hsl(var(--primary));
-  --secondary-border: hsl(var(--secondary));
-  --muted-border: hsl(var(--muted));
-  --accent-border: hsl(var(--accent));
-  --destructive-border: hsl(var(--destructive));
+  --background: 0 0% 100%;
+  --foreground: 0 0% 12%;
+  --card: 0 0% 96%;
+  --card-foreground: 0 0% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 12%;
+  --primary: 217 89% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 92%;
+  --secondary-foreground: 0 0% 12%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 210 5% 40%;
+  --accent: 217 89% 96%;
+  --accent-foreground: 217 89% 40%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 217 89% 60%;
+  --radius: 1rem;
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9; 
-
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  /* Gritty Military Dark Mode */
-  --background: 0 0% 10%; 
-  --foreground: 40 10% 85%; 
-  --border: 0 0% 20%; 
-
-  --card: 0 0% 13%; 
-  --card-foreground: 40 10% 85%; 
-  --card-border: 0 0% 20%; 
-
-  --sidebar: 0 0% 8%;
-  --sidebar-foreground: 40 10% 85%;
-  --sidebar-border: 0 0% 20%;
-  --sidebar-primary: 80 30% 40%;
-  --sidebar-primary-foreground: 0 0% 10%;
-  --sidebar-accent: 0 0% 16%;
-  --sidebar-accent-foreground: 40 10% 85%;
-  --sidebar-ring: 80 30% 40%;
-
-  --popover: 0 0% 10%;
-  --popover-foreground: 40 10% 85%;
-  --popover-border: 0 0% 20%;
-
-  /* Olive drab primary */
-  --primary: 80 30% 40%; 
-  --primary-foreground: 0 0% 10%;
-
-  /* Oxblood red / charcoal accents */
-  --secondary: 0 0% 20%;
-  --secondary-foreground: 40 10% 85%;
-
-  --muted: 0 0% 16%;
-  --muted-foreground: 0 0% 60%;
-
-  --accent: 0 0% 20%;
-  --accent-foreground: 40 10% 85%;
-
-  /* Oxblood */
-  --destructive: 0 50% 35%;
-  --destructive-foreground: 40 10% 85%;
-
-  --input: 0 0% 25%;
-  --ring: 80 30% 40%;
+  /* Gemini aesthetic colors */
+  --background: 240 2% 8%; /* #131314 */
+  --foreground: 0 0% 89%; /* #E3E3E3 */
   
-  --chart-1: 80 30% 40%;
-  --chart-2: 0 0% 70%;
-  --chart-3: 0 50% 35%;
-  --chart-4: 200 20% 35%;
-  --chart-5: 40 20% 40%;
-
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
-  --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
-  --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 1px 2px -1px hsl(0 0% 0% / 0.5);
-  --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 1px 2px -1px hsl(0 0% 0% / 0.5);
-  --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 2px 4px -1px hsl(0 0% 0% / 0.5);
-  --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 4px 6px -1px hsl(0 0% 0% / 0.5);
-  --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.5), 0px 8px 10px -1px hsl(0 0% 0% / 0.5);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.5);
+  --card: 240 2% 12%; /* #1E1F20 */
+  --card-foreground: 0 0% 89%;
+  
+  --popover: 240 2% 12%;
+  --popover-foreground: 0 0% 89%;
+  
+  --primary: 217 89% 76%; /* #8AB4F8 - Gemini Blue */
+  --primary-foreground: 240 2% 8%;
+  
+  --secondary: 240 2% 16%; /* #282A2C */
+  --secondary-foreground: 0 0% 89%;
+  
+  --muted: 240 2% 12%;
+  --muted-foreground: 210 5% 63%; /* #9AA0A6 */
+  
+  --accent: 217 89% 16%;
+  --accent-foreground: 217 89% 76%;
+  
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 89%;
+  
+  --border: 240 2% 27%; /* #444746 */
+  --input: 240 2% 27%;
+  --ring: 217 89% 76%;
+  
+  --sidebar: 240 2% 12%;
+  --sidebar-foreground: 0 0% 89%;
+  --sidebar-border: 240 2% 27%;
+  --sidebar-accent: 240 2% 16%;
+  --sidebar-accent-foreground: 0 0% 89%;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    /* Add a subtle grain texture */
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-}
-
-@layer utilities {
-  .font-display {
-    font-family: var(--font-display);
   }
 }

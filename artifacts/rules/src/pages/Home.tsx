@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ruleSections, ranks } from "../data/rules";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Menu, ChevronUp } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Menu, Settings, MessageSquare, Plus, CircleUser, AlignLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 const factions = [
   "Гражданские",
@@ -59,6 +58,7 @@ const documents = [
 export default function Home() {
   const [activeSection, setActiveSection] = useState<string>("general");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -66,6 +66,14 @@ export default function Home() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setActiveSection(entry.target.id);
+            
+            // Scroll active pill into view
+            if (navRef.current) {
+              const activeBtn = navRef.current.querySelector(`[data-section="${entry.target.id}"]`);
+              if (activeBtn) {
+                activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+              }
+            }
           }
         });
       },
@@ -86,10 +94,6 @@ export default function Home() {
     }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -99,298 +103,321 @@ export default function Home() {
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0 }
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col gap-1 py-4 h-full overflow-y-auto pr-4">
-      <div className="mb-6 px-4">
-        <h2 className="text-xl font-display text-primary tracking-widest">ОГЛАВЛЕНИЕ</h2>
-        <div className="h-1 w-12 bg-destructive mt-2" />
+    <div className="flex flex-col h-full bg-[#1E1F20] w-[280px] p-4 text-[#E3E3E3]">
+      <div className="mb-8">
+        <Button variant="ghost" className="w-full justify-start rounded-full text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] h-12 px-4">
+          <Plus className="mr-2 h-5 w-5" />
+          Новый чат
+        </Button>
       </div>
-      {ruleSections.map((section, index) => {
-        const num = String(index + 1).padStart(2, "0");
-        return (
-          <button
-            key={section.id}
-            onClick={() => scrollTo(section.id)}
-            className={`text-left px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-l-4 ${
-              activeSection === section.id
-                ? "border-destructive text-foreground bg-accent/50"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/20"
-            }`}
-          >
-            <span className="text-destructive mr-2">{num}</span>
-            {section.title}
-          </button>
-        );
-      })}
-      <button
-        onClick={() => scrollTo("ranks")}
-        className={`text-left px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-l-4 ${
-          activeSection === "ranks"
-            ? "border-destructive text-foreground bg-accent/50"
-            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/20"
-        }`}
-      >
-        <span className="text-destructive mr-2">{String(ruleSections.length + 1).padStart(2, "0")}</span>
-        Звания
-      </button>
-      <button
-        onClick={() => scrollTo("documents")}
-        className={`text-left px-4 py-3 text-sm font-bold uppercase tracking-wider transition-colors border-l-4 ${
-          activeSection === "documents"
-            ? "border-destructive text-foreground bg-accent/50"
-            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/20"
-        }`}
-      >
-        <span className="text-destructive mr-2">{String(ruleSections.length + 2).padStart(2, "0")}</span>
-        Шаблоны документов
-      </button>
+      <div className="flex-1 overflow-y-auto">
+        <p className="px-4 text-xs font-medium text-[#9AA0A6] mb-4">Недавние</p>
+        <div className="flex flex-col gap-1">
+          {ruleSections.slice(0, 4).map((section) => (
+            <Button
+              key={section.id}
+              variant="ghost"
+              onClick={() => scrollTo(section.id)}
+              className="w-full justify-start rounded-full text-sm font-normal text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] h-10 px-4 truncate"
+            >
+              <MessageSquare className="mr-3 h-4 w-4 shrink-0 text-[#E3E3E3]" />
+              <span className="truncate">{section.title}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-auto pt-4 flex flex-col gap-1 border-t border-[#444746]">
+         <Button variant="ghost" className="w-full justify-start rounded-full text-sm font-normal text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] h-10 px-4">
+           <Settings className="mr-3 h-4 w-4 text-[#E3E3E3]" />
+           Настройки
+         </Button>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row font-sans selection:bg-destructive selection:text-white">
+    <div className="min-h-screen bg-[#131314] text-[#E3E3E3] flex font-sans selection:bg-[#8AB4F8] selection:text-[#131314]">
       
-      {/* Mobile Header & Sidebar Drawer */}
-      <div className="md:hidden sticky top-0 z-50 w-full bg-background/95 backdrop-blur border-b border-border p-4 flex items-center justify-between">
-        <div className="font-display text-xl tracking-widest text-primary flex items-center gap-3">
-          <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Logo" className="w-8 h-8 rounded object-cover border border-primary/30 grayscale contrast-125" />
-          БАЛКАНСКИЙ КОНФЛИКТ
+      {/* Slim Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-[68px] shrink-0 h-screen sticky top-0 bg-[#131314] py-4 items-center gap-4 z-40">
+        <Button variant="ghost" size="icon" className="rounded-full text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3]">
+          <Menu className="h-5 w-5" />
+        </Button>
+        
+        <div className="mt-4">
+          <Button variant="ghost" size="icon" className="rounded-full bg-[#282A2C] text-[#E3E3E3] hover:bg-[#444746] hover:text-[#E3E3E3] h-10 w-10">
+            <Plus className="h-5 w-5" />
+          </Button>
         </div>
-        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="border-border rounded-none">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[300px] border-border bg-background p-0 rounded-none">
-            <SheetTitle className="sr-only">Оглавление</SheetTitle>
-            <SidebarContent />
-          </SheetContent>
-        </Sheet>
-      </div>
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-[320px] shrink-0 border-r border-border h-screen sticky top-0 bg-sidebar/50 backdrop-blur-md">
-        <SidebarContent />
+        <div className="mt-4 flex flex-col gap-2 w-full px-2">
+          {ruleSections.slice(0, 3).map((section, idx) => (
+             <Button key={idx} variant="ghost" size="icon" onClick={() => scrollTo(section.id)} className="rounded-full text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] w-10 h-10 mx-auto">
+               <MessageSquare className="h-4 w-4" />
+             </Button>
+          ))}
+        </div>
+
+        <div className="mt-auto flex flex-col gap-2">
+          <Button variant="ghost" size="icon" className="rounded-full text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3]">
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0 flex flex-col items-center">
-        <div className="w-full max-w-4xl px-4 py-12 md:py-24 md:px-12 flex flex-col gap-24">
-          
-          {/* Hero Header */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex flex-col items-center text-center gap-8 mb-12"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-destructive blur-2xl opacity-20 rounded-full" />
-              <img 
-                src={`${import.meta.env.BASE_URL}logo.jpg`} 
-                alt="БАЛКАНСКИЙ КОНФЛИКТ" 
-                className="w-32 h-32 md:w-48 md:h-48 object-cover rounded shadow-2xl border-2 border-primary/20 grayscale hover:grayscale-0 transition-all duration-700"
-              />
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#131314]">
+        
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 flex items-center justify-between p-4 bg-[#131314]/90 backdrop-blur">
+          <div className="flex items-center gap-3">
+            <div className="md:hidden">
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3]">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] p-0 border-none bg-transparent">
+                  <SheetTitle className="sr-only">Меню навигации</SheetTitle>
+                  <SidebarContent />
+                </SheetContent>
+              </Sheet>
             </div>
             
-            <div className="flex flex-col items-center gap-4">
-              <Badge variant="outline" className="rounded-none border-destructive/50 text-destructive font-mono px-3 py-1">ДОКУМЕНТ СЕКРЕТЕН / RESTRICTED</Badge>
-              <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-foreground">
-                БАЛКАНСКИЙ<br/><span className="text-primary">КОНФЛИКТ</span>
+            <span className="text-[#E3E3E3] text-xl font-medium tracking-tight flex items-center gap-2">
+              <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Logo" className="w-8 h-8 rounded-full object-cover" />
+              Балканский Конфликт
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+             <Avatar className="h-8 w-8 bg-[#282A2C] text-[#8AB4F8] hover:cursor-pointer transition-opacity hover:opacity-80">
+               <AvatarFallback className="bg-[#282A2C] text-[#8AB4F8] font-medium">Б</AvatarFallback>
+             </Avatar>
+          </div>
+        </header>
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-x-hidden">
+          <div className="max-w-[880px] mx-auto px-4 md:px-8 py-8 md:py-12 pb-24 flex flex-col gap-12">
+            
+            {/* Hero Section */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="flex flex-col gap-6 pt-4 pb-8"
+            >
+              <h1 className="text-4xl md:text-5xl font-normal text-[#9AA0A6] tracking-tight">
+                Добро пожаловать
               </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground italic font-serif">
-                Свод правил военного RP-сервера Garry's Mod
-              </p>
+              <h2 className="text-5xl md:text-6xl font-medium bg-clip-text text-transparent bg-gradient-to-r from-[#8AB4F8] to-[#D7E3FC] tracking-tight">
+                Свод правил сервера
+              </h2>
+              
+              <div className="flex flex-wrap gap-2 mt-4">
+                {factions.map(faction => (
+                  <div key={faction} className="px-4 py-2 rounded-full bg-[#1E1F20] text-[#E3E3E3] text-sm font-medium border border-[#444746] select-none">
+                    {faction}
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick Jump Pills */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                 <Button onClick={() => scrollTo("general")} variant="secondary" className="rounded-full bg-[#282A2C] text-[#E3E3E3] hover:bg-[#444746] border-none px-5 font-normal">
+                   Общие правила
+                 </Button>
+                 <Button onClick={() => scrollTo("terms")} variant="secondary" className="rounded-full bg-[#282A2C] text-[#E3E3E3] hover:bg-[#444746] border-none px-5 font-normal">
+                   Свод терминов
+                 </Button>
+                 <Button onClick={() => scrollTo("ranks")} variant="secondary" className="rounded-full bg-[#282A2C] text-[#E3E3E3] hover:bg-[#444746] border-none px-5 font-normal">
+                   Звания фракций
+                 </Button>
+                 <Button onClick={() => scrollTo("documents")} variant="secondary" className="rounded-full bg-[#282A2C] text-[#E3E3E3] hover:bg-[#444746] border-none px-5 font-normal">
+                   Шаблоны документов
+                 </Button>
+              </div>
+            </motion.div>
+
+            {/* Horizontal Navigation row */}
+            <div className="sticky top-20 z-20 py-2 bg-[#131314]/90 backdrop-blur -mx-4 px-4 md:mx-0 md:px-0">
+               <div 
+                 ref={navRef}
+                 className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pt-1"
+               >
+                 {ruleSections.map((section) => (
+                   <button
+                     key={section.id}
+                     data-section={section.id}
+                     onClick={() => scrollTo(section.id)}
+                     className={`shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+                       activeSection === section.id 
+                         ? 'bg-[#8AB4F8]/10 text-[#8AB4F8]' 
+                         : 'bg-[#1E1F20] text-[#E3E3E3] hover:bg-[#282A2C]'
+                     }`}
+                   >
+                     {section.title}
+                   </button>
+                 ))}
+                 <button
+                   data-section="ranks"
+                   onClick={() => scrollTo("ranks")}
+                   className={`shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+                     activeSection === "ranks" 
+                       ? 'bg-[#8AB4F8]/10 text-[#8AB4F8]' 
+                       : 'bg-[#1E1F20] text-[#E3E3E3] hover:bg-[#282A2C]'
+                   }`}
+                 >
+                   Звания
+                 </button>
+                 <button
+                   data-section="documents"
+                   onClick={() => scrollTo("documents")}
+                   className={`shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-colors ${
+                     activeSection === "documents" 
+                       ? 'bg-[#8AB4F8]/10 text-[#8AB4F8]' 
+                       : 'bg-[#1E1F20] text-[#E3E3E3] hover:bg-[#282A2C]'
+                   }`}
+                 >
+                   Документы
+                 </button>
+               </div>
             </div>
 
-            <Separator className="w-32 bg-border h-1" />
+            {/* Rules Sections */}
+            <div className="flex flex-col gap-10">
+              {ruleSections.map((section, index) => {
+                const num = String(index + 1).padStart(2, "0");
+                return (
+                  <motion.section 
+                    key={section.id} 
+                    id={section.id}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-100px" }}
+                    variants={containerVariants}
+                    className="scroll-mt-36"
+                  >
+                    <div className="bg-[#1E1F20] rounded-3xl p-6 md:p-10 shadow-sm border border-[#282A2C]">
+                      <div className="mb-8">
+                        <span className="text-sm font-medium text-[#8AB4F8] mb-2 block">Раздел {num}</span>
+                        <h2 className="text-2xl md:text-3xl font-medium text-[#E3E3E3] mb-2">{section.title}</h2>
+                        <p className="text-base text-[#9AA0A6]">{section.subtitle}</p>
+                      </div>
 
-            <div className="flex flex-wrap justify-center gap-3 w-full max-w-2xl">
-              {factions.map(faction => (
-                <div key={faction} className="px-4 py-2 border border-border/50 bg-card/30 font-mono text-sm tracking-wider uppercase backdrop-blur-sm">
-                  {faction}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Rules Sections */}
-          <div className="flex flex-col gap-32">
-            {ruleSections.map((section, index) => {
-              const num = String(index + 1).padStart(2, "0");
-              return (
-                <motion.section 
-                  key={section.id} 
-                  id={section.id}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: "-100px" }}
-                  variants={containerVariants}
-                  className="relative scroll-mt-24"
-                >
-                  <div className="absolute -left-4 md:-left-12 top-0 h-full w-1 bg-border" />
-                  
-                  <div className="mb-10 relative">
-                    <div className="absolute -left-4 md:-left-12 top-2 h-12 w-1 bg-destructive" />
-                    <div className="flex items-baseline gap-4 mb-4">
-                      <span className="text-4xl md:text-6xl font-display font-bold text-muted/30 select-none">{num}</span>
-                      <h2 className="text-3xl md:text-4xl font-display tracking-wide uppercase text-foreground">{section.title}</h2>
+                      <div className="flex flex-col gap-5">
+                        {section.rules.map((rule, ruleIdx) => (
+                          <motion.div 
+                            key={ruleIdx} 
+                            variants={itemVariants}
+                            className="flex gap-4 text-[15px] text-[#E3E3E3] leading-relaxed"
+                          >
+                            <span className="text-[#9AA0A6] font-medium mt-0.5 shrink-0 w-6">
+                              {ruleIdx + 1}.
+                            </span>
+                            <div>{rule}</div>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-lg text-muted-foreground font-serif italic border-l-2 border-primary/30 pl-4 py-1">{section.subtitle}</p>
+                  </motion.section>
+                );
+              })}
+
+              {/* Ranks Section */}
+              <motion.section
+                id="ranks"
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={containerVariants}
+                className="scroll-mt-36"
+              >
+                <div className="bg-[#1E1F20] rounded-3xl p-6 md:p-10 shadow-sm border border-[#282A2C]">
+                  <div className="mb-8">
+                     <span className="text-sm font-medium text-[#8AB4F8] mb-2 block">Раздел {String(ruleSections.length + 1).padStart(2, "0")}</span>
+                     <h2 className="text-2xl md:text-3xl font-medium text-[#E3E3E3] mb-2">Звания всех фракций</h2>
+                     <p className="text-base text-[#9AA0A6]">Иерархия вооруженных сил и гражданских групп.</p>
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    {section.rules.map((rule, ruleIdx) => (
-                      <motion.div 
-                        key={ruleIdx} 
-                        variants={itemVariants}
-                        className="flex gap-4 p-4 md:p-6 bg-card/40 border border-border/50 hover:border-primary/30 transition-colors group"
-                      >
-                        <div className="font-mono text-destructive/80 font-bold min-w-[2.5rem] mt-0.5">
-                          {index + 1}.{ruleIdx + 1}
-                        </div>
-                        <div className="text-card-foreground leading-relaxed">
-                          {rule}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {ranks.map((faction, idx) => (
+                      <motion.div key={idx} variants={itemVariants} className="bg-[#282A2C] rounded-2xl p-6">
+                        <h3 className="text-lg font-medium text-[#E3E3E3] mb-4 pb-3 border-b border-[#444746]">
+                          {faction.faction}
+                        </h3>
+                        <div className="flex flex-col">
+                          {faction.list.map((rank, rankIdx) => (
+                            <div 
+                              key={rankIdx} 
+                              className="py-2 border-b border-[#444746]/50 last:border-0 text-[15px] flex items-center justify-between text-[#E3E3E3]"
+                            >
+                              <span>{rank}</span>
+                              <span className="text-xs text-[#9AA0A6] font-mono">{faction.list.length - rankIdx}</span>
+                            </div>
+                          ))}
                         </div>
                       </motion.div>
                     ))}
                   </div>
-                </motion.section>
-              );
-            })}
-
-            {/* Ranks Section */}
-            <motion.section
-              id="ranks"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              variants={containerVariants}
-              className="relative scroll-mt-24"
-            >
-              <div className="absolute -left-4 md:-left-12 top-0 h-full w-1 bg-border" />
-              
-              <div className="mb-10 relative">
-                <div className="absolute -left-4 md:-left-12 top-2 h-12 w-1 bg-destructive" />
-                <div className="flex items-baseline gap-4 mb-4">
-                  <span className="text-4xl md:text-6xl font-display font-bold text-muted/30 select-none">
-                    {String(ruleSections.length + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-3xl md:text-4xl font-display tracking-wide uppercase text-foreground">Звания всех фракций</h2>
                 </div>
-                <p className="text-lg text-muted-foreground font-serif italic border-l-2 border-primary/30 pl-4 py-1">
-                  Иерархия вооруженных сил и гражданских групп.
-                </p>
-              </div>
+              </motion.section>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                {ranks.map((faction, idx) => (
-                  <motion.div key={idx} variants={itemVariants} className="flex flex-col h-full bg-card border border-border">
-                    <div 
-                      className="p-4 font-display text-xl tracking-wider text-center text-white"
-                      style={{ backgroundColor: faction.color }}
-                    >
-                      {faction.faction}
-                    </div>
-                    <div className="p-0 flex-1">
-                      {faction.list.map((rank, rankIdx) => (
-                        <div 
-                          key={rankIdx} 
-                          className="px-4 py-3 border-b border-border/50 last:border-0 text-sm font-medium hover:bg-muted/50 flex items-center justify-between"
-                        >
-                          <span>{rank}</span>
-                          <span className="text-xs text-muted-foreground font-mono">{faction.list.length - rankIdx}</span>
+              {/* Documents Section */}
+              <motion.section
+                id="documents"
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={containerVariants}
+                className="scroll-mt-36"
+              >
+                <div className="bg-[#1E1F20] rounded-3xl p-6 md:p-10 shadow-sm border border-[#282A2C]">
+                  <div className="mb-8">
+                     <span className="text-sm font-medium text-[#8AB4F8] mb-2 block">Раздел {String(ruleSections.length + 2).padStart(2, "0")}</span>
+                     <h2 className="text-2xl md:text-3xl font-medium text-[#E3E3E3] mb-2">Формат документов</h2>
+                     <p className="text-base text-[#9AA0A6]">Стандартизированные бланки делопроизводства.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    {documents.map((doc, idx) => (
+                      <motion.div 
+                        key={idx} 
+                        variants={itemVariants}
+                        className="bg-[#282A2C] rounded-2xl overflow-hidden"
+                      >
+                        <div className="px-6 py-4 border-b border-[#444746]">
+                          <h3 className="text-lg font-medium text-[#E3E3E3]">
+                            {doc.title}
+                          </h3>
                         </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-
-            {/* Documents Section */}
-            <motion.section
-              id="documents"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              variants={containerVariants}
-              className="relative scroll-mt-24"
-            >
-              <div className="absolute -left-4 md:-left-12 top-0 h-full w-1 bg-border" />
-              
-              <div className="mb-10 relative">
-                <div className="absolute -left-4 md:-left-12 top-2 h-12 w-1 bg-destructive" />
-                <div className="flex items-baseline gap-4 mb-4">
-                  <span className="text-4xl md:text-6xl font-display font-bold text-muted/30 select-none">
-                    {String(ruleSections.length + 2).padStart(2, "0")}
-                  </span>
-                  <h2 className="text-3xl md:text-4xl font-display tracking-wide uppercase text-foreground">Формат документов</h2>
+                        <div className="p-6 bg-[#131314]/50">
+                          <pre className="font-mono text-sm whitespace-pre-wrap text-[#9AA0A6] leading-relaxed">
+                            {doc.content}
+                          </pre>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-lg text-muted-foreground font-serif italic border-l-2 border-primary/30 pl-4 py-1">
-                  Стандартизированные бланки делопроизводства.
-                </p>
-              </div>
+              </motion.section>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {documents.map((doc, idx) => (
-                  <motion.div 
-                    key={idx} 
-                    variants={itemVariants}
-                    className="bg-[#dcd8cc] dark:bg-[#1a1c1a] border border-[#a8a396] dark:border-[#2a2c2a] p-6 shadow-inner relative overflow-hidden"
-                  >
-                    <div className="absolute top-4 right-4 border-2 border-destructive/20 text-destructive/20 font-display text-2xl px-4 py-1 rotate-12 select-none">
-                      КОПИЯ
-                    </div>
-                    <h3 className="font-display text-xl text-primary dark:text-primary-foreground mb-6 border-b border-black/10 dark:border-white/10 pb-2">
-                      {doc.title}
-                    </h3>
-                    <pre className="font-mono text-sm whitespace-pre-wrap text-black/80 dark:text-white/70 leading-relaxed font-bold">
-                      {doc.content}
-                    </pre>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-
-          </div>
-
-          <div className="flex justify-center mt-12 mb-8">
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={scrollToTop}
-              className="gap-2 rounded-none border-border font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-primary transition-all"
-            >
-              <ChevronUp className="w-4 h-4" /> Наверх
-            </Button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="w-full mt-auto border-t border-border bg-card/50 py-12 px-6">
-          <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-sm text-muted-foreground">
-            <div className="flex flex-col gap-2 text-center md:text-left">
-              <span className="font-bold text-foreground">БАЛКАНСКИЙ КОНФЛИКТ © 2026</span>
-              <span>v1.0 — Официальный свод правил</span>
-            </div>
-            
-            <div className="border-4 border-destructive/40 text-destructive/60 font-display text-3xl px-6 py-2 -rotate-2 select-none stamp-effect">
-              УТВЕРЖДЕНО
-            </div>
-            
-            <div className="text-center md:text-right">
-              Военная Администрация<br/>
-              Все права защищены
             </div>
           </div>
-        </footer>
-      </main>
+
+          {/* Footer */}
+          <footer className="w-full py-8 text-center text-sm text-[#9AA0A6]">
+            Балканский Конфликт · v1.0 · 2026
+          </footer>
+        </main>
+      </div>
     </div>
   );
 }
