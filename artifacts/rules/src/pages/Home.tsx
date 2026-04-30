@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { ruleSections, ranks } from "../data/rules";
-import { Menu, Settings, MessageSquare, Plus, CircleUser, AlignLeft } from "lucide-react";
+import { Menu, Settings, MessageSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 const factions = [
@@ -202,11 +201,6 @@ export default function Home() {
             </span>
           </div>
           
-          <div className="flex items-center gap-4">
-             <Avatar className="h-8 w-8 bg-[#282A2C] text-[#8AB4F8] hover:cursor-pointer transition-opacity hover:opacity-80">
-               <AvatarFallback className="bg-[#282A2C] text-[#8AB4F8] font-medium">Б</AvatarFallback>
-             </Avatar>
-          </div>
         </header>
 
         {/* Scrollable Content */}
@@ -256,7 +250,20 @@ export default function Home() {
             <div className="sticky top-20 z-20 py-2 bg-[#131314]/90 backdrop-blur -mx-4 px-4 md:mx-0 md:px-0">
                <div 
                  ref={navRef}
-                 className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pt-1"
+                 onWheel={(e) => {
+                   if (e.deltaY === 0) return;
+                   const el = e.currentTarget;
+                   const max = el.scrollWidth - el.clientWidth;
+                   if (max <= 0) return;
+                   if (
+                     (e.deltaY > 0 && el.scrollLeft < max) ||
+                     (e.deltaY < 0 && el.scrollLeft > 0)
+                   ) {
+                     e.preventDefault();
+                     el.scrollLeft += e.deltaY;
+                   }
+                 }}
+                 className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 cursor-grab active:cursor-grabbing"
                >
                  {ruleSections.map((section) => (
                    <button
