@@ -1,5 +1,5 @@
 {
-  "name": "rules",
+  "name": "@workspace/rules",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -72,7 +72,6 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
     "wouter": "^3.3.5",
-    "wrangler": "^4.87.0",
     "zod": "catalog:"
   }
 }
