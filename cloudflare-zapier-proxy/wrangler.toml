@@ -3,3 +3,7 @@ compatibility_date = "2026-05-01"
 
 # Entry point for the worker. No custom build step required; uses src/index.ts as the source.
 main = "src/index.ts"
+
+# Environment variables (uncomment for local dev; use `wrangler secret put ZAP_URL` for production)
+# [vars]
+ZAP_URL = "https://hooks.zapier.com/hooks/catch/27410332/uva81ym/"
