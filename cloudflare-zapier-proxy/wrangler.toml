@@ -1,8 +1,4 @@
 name = "zapier-proxy"
 
-[build]
-command = "npm install"
-
-# Optional: дефолтный Zapier URL можно определить здесь как переменную окружения, но не стоит хранить секреты в репозитории
-# [vars]
-# ZAP_URL = "https://hooks.zapier.com/hooks/catch/27410332/uva81ym/"
+# Entry point for the worker. No custom build step required; uses src/index.js as the source.
+main = "src/index.js"

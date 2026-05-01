@@ -30,11 +30,7 @@ async function handleRequest(request) {
 
     const zapResp = await fetch(zapUrl, forwardInit);
     // Return Zapier's response as-is
-    return new Response(zapResp.body, {
-      status: zapResp.status,
-      statusText: zapResp.statusText,
-      headers: new Headers(zapResp.headers)
-    });
+    return zapResp;
   } catch (err) {
     return new Response('Error forwarding to Zapier: ' + String(err.message || err), {
       status: 500,
