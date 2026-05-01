@@ -1,11 +1,7 @@
 name = "zapier-proxy"
-type = "javascript"
 
 [build]
 command = "npm install"
-
-[build.upload]
-format = "service-worker"
 
 # Optional: дефолтный Zapier URL можно определить здесь как переменную окружения, но не стоит хранить секреты в репозитории
 # [vars]
