@@ -1,4 +1,5 @@
 name = "zapier-proxy"
+compatibility_date = "2026-05-01"
 
 # Entry point for the worker. No custom build step required; uses src/index.ts as the source.
 main = "src/index.ts"
