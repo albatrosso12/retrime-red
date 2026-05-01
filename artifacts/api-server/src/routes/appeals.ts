@@ -4,7 +4,8 @@ import { SubmitAppealBody, SubmitAppealResponse } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 router.post("/appeals", async (req, res) => {
-  const webhook = process.env.ZAPIER_WEBHOOK_URL;
+  // Use env variable or fallback to the Cloudflare Worker URL
+  const webhook = process.env.ZAPIER_WEBHOOK_URL || "https://retrime.workers.dev";
   if (!webhook) {
     req.log.error("ZAPIER_WEBHOOK_URL is not configured");
     res.status(503).json({
