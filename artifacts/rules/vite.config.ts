@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -12,6 +12,10 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH || "/";
+
+// Load env variables from root .env file
+const env = loadEnv('', path.resolve(import.meta.dirname, '..', '..'), 'VITE_');
+const apiUrl = env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev';
 
 export default defineConfig({
   base: basePath,
@@ -38,6 +42,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
       "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "@workspace": path.resolve(import.meta.dirname, "..", "..", "lib"),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -58,9 +63,9 @@ export default defineConfig({
     proxy: {
       // Proxy requests to the Worker
       '/api': {
-        target: import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev',
+        target: apiUrl,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/'),
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
         configure: (proxy, options) => {
           // Add Authorization header from localStorage if available
           proxy.on('proxyReq', (proxyReq, req, res) => {
@@ -72,7 +77,7 @@ export default defineConfig({
         },
       },
       '/auth': {
-        target: import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev',
+        target: apiUrl,
         changeOrigin: true,
         // No rewrite for auth paths
       },

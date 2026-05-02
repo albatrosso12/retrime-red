@@ -9,8 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAppealsForReview, submitVerdict, getVerdicts, type Appeal, type Verdict } from "@workspace/api-client-react";
-import { useSubmitAppeal } from "@workspace/api-client-react";
+import { getAppealsForReview, submitVerdict, getVerdicts, getCurrentUser, type Appeal, type Verdict } from "@workspace/api-client-react";
 
 const categories = [
   "Жалоба на игрока",
@@ -35,15 +34,46 @@ export default function ReviewAppealsPage() {
   const [verdict, setVerdict] = useState("guilty");
   const [reason, setReason] = useState("");
 
+  // Check authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      navigate('/');
+      return;
+    }
+    getCurrentUser().catch((err) => {
+      if (err?.status === 401) {
+        localStorage.removeItem('auth_token');
+        navigate('/');
+      }
+    });
+  }, [navigate]);
+
   const { data: appeals = [], isLoading, error } = useQuery({
     queryKey: ["appealsForReview"],
     queryFn: getAppealsForReview,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) {
+        localStorage.removeItem('auth_token');
+        navigate('/');
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   const { data: verdicts = [] } = useQuery({
     queryKey: ["verdicts", selectedAppeal?.id],
     queryFn: () => selectedAppeal ? getVerdicts(selectedAppeal.id) : Promise.resolve([]),
     enabled: !!selectedAppeal,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) {
+        localStorage.removeItem('auth_token');
+        navigate('/');
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   const submitVerdictMutation = useMutation({

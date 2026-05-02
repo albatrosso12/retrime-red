@@ -8,7 +8,36 @@ import ChatPage from "@/pages/ChatPage";
 import ReviewAppealsPage from "@/pages/ReviewAppealsPage";
 import AuthCallback from "@/pages/AuthCallback";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryFn: async ({ queryKey }) => {
+    // Global error handling for 401
+    const context = queryClient.defaultQueryOptions();
+    return context.queryFn?.( { queryKey } as any);
+  },
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on 401 errors
+        if (error?.status === 401) {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/';
+          return false;
+        }
+        return failureCount < 3;
+      },
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        if (error?.status === 401) {
+          localStorage.removeItem('auth_token');
+          window.location.href = '/';
+          return false;
+        }
+        return failureCount < 3;
+      },
+    },
+  },
+});
 
 function Router() {
   return (

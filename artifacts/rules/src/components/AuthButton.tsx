@@ -2,14 +2,19 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, User } from "lucide-react";
 import { useLocation } from "wouter";
-import { getCurrentUser, logout } from "@workspace/api-client-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getCurrentUser, logout, setBaseUrl } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function AuthButton() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+
+  // Set base URL for API client
+  useEffect(() => {
+    setBaseUrl(import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev');
+  }, []);
 
   // Check for token in localStorage on mount
   useEffect(() => {
@@ -20,16 +25,10 @@ export function AuthButton() {
       return;
     }
 
-    // Try to get user data using the token
-    // We'll use a custom fetch with the token
-    fetch(`${import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev'}/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    })
-      .then(res => res.json())
+    // Try to get user data using the API client
+    getCurrentUser()
       .then(data => {
-        if (data.id) {
+        if (data && data.id) {
           setIsAuthenticated(true);
           setUser(data);
         } else {
@@ -38,29 +37,27 @@ export function AuthButton() {
           setUser(null);
         }
       })
-      .catch(() => {
-        localStorage.removeItem('auth_token');
+      .catch((err) => {
+        // If 401 or other error, clear token
+        if (err?.status === 401) {
+          localStorage.removeItem('auth_token');
+        }
         setIsAuthenticated(false);
         setUser(null);
       });
   }, []);
 
   const handleLogin = () => {
-    // Super simple redirect - no variables, no logic
-    window.location.href = "https://retrime.korsetov2009.workers.dev/auth/discord";
+    window.location.href = 'https://retrime.korsetov2009.workers.dev/auth/discord';
   };
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     setIsAuthenticated(false);
     setUser(null);
-    // Optionally call logout endpoint
-    fetch(`${import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev'}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-    }).catch(() => {});
+    // Call logout endpoint using API client
+    logout().catch(() => {});
+    queryClient.clear();
   };
 
   if (isAuthenticated && user) {
