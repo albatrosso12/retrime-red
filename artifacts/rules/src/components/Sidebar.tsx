@@ -150,7 +150,7 @@ export function Sidebar({
           Настройки
         </Button>
       </div>
-      <div className="px-1 pb-3">
+      <div className="px-1 pb-3 mt-10">
         <AuthButton />
       </div>
     </div>

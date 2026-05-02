@@ -37,9 +37,24 @@ export function AuthButton() {
   });
 
   const handleLogin = () => {
-    // Use absolute URL to API server, not relative path
-    const apiUrl = import.meta.env.API_URL || "http://localhost:3000";
-    window.location.href = `${apiUrl}/api/auth/discord`;
+    // Direct Discord OAuth redirect using env variables
+    const clientId = import.meta.env.DISCORD_CLIENT_ID;
+    const redirectUri = import.meta.env.DISCORD_REDIRECT_URI;
+    
+    if (clientId && redirectUri) {
+      // Construct Discord OAuth URL directly
+      const discordAuthUrl = new URL("https://discord.com/api/oauth2/authorize");
+      discordAuthUrl.searchParams.set("client_id", clientId);
+      discordAuthUrl.searchParams.set("redirect_uri", redirectUri);
+      discordAuthUrl.searchParams.set("response_type", "code");
+      discordAuthUrl.searchParams.set("scope", "identify email");
+      
+      window.location.href = discordAuthUrl.toString();
+    } else {
+      // Fallback to API server if env variables not set
+      const apiUrl = import.meta.env.API_URL || "http://localhost:3000";
+      window.location.href = `${apiUrl}/api/auth/discord`;
+    }
   };
 
   const handleLogout = () => {
