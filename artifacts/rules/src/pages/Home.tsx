@@ -126,8 +126,8 @@ export default function Home() {
           <div className="max-w-3xl mx-auto px-6 py-12 pb-24 flex flex-col gap-12">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-4">
               <p className="text-[#6B7280] text-sm uppercase tracking-widest">Добро пожаловать</p>
-              <h1 className="text-4xl md:text-5xl font-semibold text-white tracking-tight">
-                Свод правил <span className="text-[#8AB4F8]">сервера</span>
+              <h1 className="text-4xl md:text-5xl font-semibold text-white tracking-tight font-serif">
+                Свод правил <span className="text-[#8AB4F8] font-serif">сервера</span>
               </h1>
               <div className="flex flex-wrap gap-2 pt-2">
                 {factions.map((f) => (
@@ -168,7 +168,7 @@ export default function Home() {
                   <div className="border border-[#1F1F23] rounded-xl p-6 bg-[#151518]">
                     <div className="mb-6">
                       <span className="text-xs font-medium text-[#8AB4F8] uppercase tracking-wider">Раздел {String(idx + 1).padStart(2, "0")}</span>
-                      <h2 className="text-2xl font-semibold text-white mt-2">{section.title}</h2>
+                      <h2 className="text-2xl font-semibold text-white mt-2 font-serif">{section.title}</h2>
                       <p className="text-[#6B7280] mt-1">{section.subtitle}</p>
                     </div>
                     <div className="space-y-3">
@@ -186,7 +186,7 @@ export default function Home() {
               <section id="ranks" className="scroll-mt-36">
                 <div className="border border-[#1F1F23] rounded-xl p-6 bg-[#151518]">
                   <span className="text-xs font-medium text-[#8AB4F8] uppercase tracking-wider">Раздел {String(ruleSections.length + 1).padStart(2, "0")}</span>
-                  <h2 className="text-2xl font-semibold text-white mt-2 mb-6">Звания фракций</h2>
+                  <h2 className="text-2xl font-semibold text-white mt-2 mb-6 font-serif">Звания фракций</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {ranks.map((faction, idx) => (
                       <div key={idx} className="border border-[#1F1F23] rounded-lg p-4">
@@ -208,7 +208,7 @@ export default function Home() {
               <section id="documents" className="scroll-mt-36">
                 <div className="border border-[#1F1F23] rounded-xl p-6 bg-[#151518]">
                   <span className="text-xs font-medium text-[#8AB4F8] uppercase tracking-wider">Раздел {String(ruleSections.length + 2).padStart(2, "0")}</span>
-                  <h2 className="text-2xl font-semibold text-white mt-2 mb-6">Документы</h2>
+                  <h2 className="text-2xl font-semibold text-white mt-2 mb-6 font-serif">Документы</h2>
                   <div className="space-y-4">
                     {documents.map((doc, idx) => (
                       <div key={idx} className="border border-[#1F1F23] rounded-lg overflow-hidden">

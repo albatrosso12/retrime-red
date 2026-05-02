@@ -160,7 +160,7 @@ export default function ReviewAppealsPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <Scale className="h-6 w-6 text-[#8AB4F8]" />
-            <h1 className="text-xl font-semibold text-white">Рассмотрение жалоб</h1>
+            <h1 className="text-xl font-semibold text-white font-serif">Рассмотрение жалоб</h1>
           </div>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function ReviewAppealsPage() {
                 >
                   <div className="border border-[#1F1F23] rounded-lg p-6 bg-[#151518]">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-white">{selectedAppeal.title}</h2>
+                      <h2 className="text-lg font-semibold text-white font-serif">{selectedAppeal.title}</h2>
                       <Badge className="bg-[#1F1F23] text-[#9CA3AF]">{selectedAppeal.category}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
