@@ -10,7 +10,7 @@ interface Env {
   ZAP_URL: string;
 }
 
-const CORS_HEADERS: Record<string, string> = {
+const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -21,28 +21,29 @@ const CORS_HEADERS: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function withCors(response: Response): Response {
-  const resp = new Response(response.body, response);
-  Object.entries(CORS_HEADERS).forEach(([k, v]) => resp.headers.set(k, v));
-  return resp;
-}
-
-function jsonResponse(data: unknown, status = 200): Response {
+function corsResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
 
-function jsonError(message: string, status = 400): Response {
-  return jsonResponse({ error: message }, status);
+function corsError(message: string, status = 400): Response {
+  return corsResponse({ error: message }, status);
+}
+
+function corsText(text: string, status = 200): Response {
+  return new Response(text, {
+    status,
+    headers: { 'Content-Type': 'text/plain', ...CORS_HEADERS },
+  });
 }
 
 function randomToken(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let out = '';
   const buf = new Uint8Array(48);
   crypto.getRandomValues(buf);
+  let out = '';
   for (let i = 0; i < 48; i++) {
     out += chars.charAt(buf[i] % chars.length);
   }
@@ -88,7 +89,7 @@ async function upsertUser(
   username: string,
   avatar: string,
 ) {
-  await db
+  const result = await db
     .prepare(
       `INSERT INTO users (discord_id, username, avatar)
        VALUES (?, ?, ?)
@@ -98,6 +99,7 @@ async function upsertUser(
     )
     .bind(discordId, username, avatar)
     .run();
+  return result;
 }
 
 async function getUserIdByDiscordId(db: D1Database, discordId: string): Promise<number | null> {
@@ -124,7 +126,10 @@ async function exchangeDiscordCode(code: string, env: Env) {
       redirect_uri: env.DISCORD_REDIRECT_URI,
     }),
   });
-  if (!res.ok) throw new Error(`Discord token exchange failed: ${await res.text()}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Discord token exchange failed: ${text}`);
+  }
   return res.json();
 }
 
@@ -162,7 +167,6 @@ async function checkAndForwardToZapier(env: Env, appealId: number) {
   const verdictsCount = (appealRow.verdicts_count as number) ?? 0;
   const alreadySent = (appealRow.zapier_sent as number) === 1;
 
-  // Auto-forward ban appeals immediately
   const category = appealRow.category as string;
   const isBanAppeal = category === 'Апелляция на наказание';
 
@@ -183,9 +187,7 @@ async function checkAndForwardToZapier(env: Env, appealId: number) {
     return;
   }
 
-  // Forward when 5 verdicts collected
   if (verdictsCount >= 5 && !alreadySent) {
-    // Fetch all verdicts for this appeal
     const verdicts = await env.DB
       .prepare('SELECT verdict, reason FROM verdicts WHERE appeal_id = ? ORDER BY created_at')
       .bind(appealId)
@@ -210,7 +212,7 @@ async function checkAndForwardToZapier(env: Env, appealId: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Router
+// Route handlers
 // ---------------------------------------------------------------------------
 
 type RouteHandler = (request: Request, env: Env) => Promise<Response>;
@@ -230,16 +232,12 @@ function matchRoute(path: string, method: string, routes: RouteDef[]): { handler
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Route handlers
-// ---------------------------------------------------------------------------
-
 const routes: RouteDef[] = [
   // Health
   {
     method: 'GET',
     pattern: /^\/api\/healthz$/,
-    handler: () => jsonResponse({ status: 'ok' }),
+    handler: () => corsResponse({ status: 'ok' }),
   },
 
   // --- Auth ----------------------------------------------------------------
@@ -276,19 +274,40 @@ const routes: RouteDef[] = [
     handler: async (req, env) => {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
-      if (!code) return jsonError('No code provided', 400);
+      const error = url.searchParams.get('error');
+      
+      if (error) {
+        return corsError(`OAuth error: ${error}`, 400);
+      }
+      
+      if (!code) return corsError('No code provided', 400);
 
       try {
         const tokenData = await exchangeDiscordCode(code, env);
         const discordUser = await fetchDiscordUser(tokenData.access_token);
 
+        // Insert or update user
         await upsertUser(env.DB, discordUser.id, discordUser.username, discordUser.avatar || '');
 
-        const sessionToken = randomToken();
-        const userId = await getUserIdByDiscordId(env.DB, discordUser.id);
-        if (!userId) return jsonError('Failed to create user', 500);
+        // Get user ID after insert
+        let userId = await getUserIdByDiscordId(env.DB, discordUser.id);
+        
+        // If still no user ID, try to get from users table
+        if (!userId) {
+          const userRow = await env.DB
+            .prepare('SELECT id FROM users WHERE discord_id = ?')
+            .bind(discordUser.id)
+            .first<{ id: number }>();
+          userId = userRow?.id ?? null;
+        }
+        
+        if (!userId) {
+          return corsError('Failed to get user ID after insert', 500);
+        }
 
-        const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7; // 7 days
+        const sessionToken = randomToken();
+        const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7;
+        
         await env.DB
           .prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)')
           .bind(sessionToken, userId, expiresAt)
@@ -296,9 +315,13 @@ const routes: RouteDef[] = [
 
         const frontendUrl = env.FRONTEND_URL || new URL(env.DISCORD_REDIRECT_URI).origin;
         const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/auth/callback#token=${sessionToken}`;
-        return new Response(null, { status: 302, headers: { Location: redirectUrl } });
+        
+        return new Response(null, { 
+          status: 302, 
+          headers: { Location: redirectUrl } 
+        });
       } catch (err: any) {
-        return jsonError(`OAuth failed: ${err.message}`, 500);
+        return corsError(`OAuth failed: ${err.message}`, 500);
       }
     },
   },
@@ -309,7 +332,13 @@ const routes: RouteDef[] = [
     handler: async (req, env) => {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
-      if (!code) return jsonError('No code provided', 400);
+      const error = url.searchParams.get('error');
+      
+      if (error) {
+        return corsError(`OAuth error: ${error}`, 400);
+      }
+      
+      if (!code) return corsError('No code provided', 400);
 
       try {
         const tokenData = await exchangeDiscordCode(code, env);
@@ -317,11 +346,23 @@ const routes: RouteDef[] = [
 
         await upsertUser(env.DB, discordUser.id, discordUser.username, discordUser.avatar || '');
 
-        const sessionToken = randomToken();
-        const userId = await getUserIdByDiscordId(env.DB, discordUser.id);
-        if (!userId) return jsonError('Failed to create user', 500);
+        let userId = await getUserIdByDiscordId(env.DB, discordUser.id);
+        
+        if (!userId) {
+          const userRow = await env.DB
+            .prepare('SELECT id FROM users WHERE discord_id = ?')
+            .bind(discordUser.id)
+            .first<{ id: number }>();
+          userId = userRow?.id ?? null;
+        }
+        
+        if (!userId) {
+          return corsError('Failed to get user ID after insert', 500);
+        }
 
+        const sessionToken = randomToken();
         const expiresAt = Math.floor(Date.now() / 1000) + 86400 * 7;
+        
         await env.DB
           .prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)')
           .bind(sessionToken, userId, expiresAt)
@@ -329,9 +370,13 @@ const routes: RouteDef[] = [
 
         const frontendUrl = env.FRONTEND_URL || new URL(env.DISCORD_REDIRECT_URI).origin;
         const redirectUrl = `${frontendUrl.replace(/\/+$/, '')}/auth/callback#token=${sessionToken}`;
-        return new Response(null, { status: 302, headers: { Location: redirectUrl } });
+        
+        return new Response(null, { 
+          status: 302, 
+          headers: { Location: redirectUrl } 
+        });
       } catch (err: any) {
-        return jsonError(`OAuth failed: ${err.message}`, 500);
+        return corsError(`OAuth failed: ${err.message}`, 500);
       }
     },
   },
@@ -341,16 +386,16 @@ const routes: RouteDef[] = [
     pattern: /^\/api\/auth\/me$/,
     handler: async (req, env) => {
       const token = extractToken(req);
-      if (!token) return jsonError('Unauthorized', 401);
+      if (!token) return corsError('Unauthorized', 401);
 
       const user = await getUserByToken(env.DB, token);
-      if (!user) return jsonError('Unauthorized', 401);
+      if (!user) return corsError('Unauthorized', 401);
 
       if (await isBanned(env.DB, user.discord_id)) {
-        return jsonError('Your account has been banned from review', 403);
+        return corsError('Your account has been banned from review', 403);
       }
 
-      return jsonResponse({
+      return corsResponse({
         id: user.id,
         discordId: user.discord_id,
         username: user.username,
@@ -368,7 +413,7 @@ const routes: RouteDef[] = [
       if (token) {
         await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
       }
-      return jsonResponse({ success: true });
+      return corsResponse({ success: true });
     },
   },
 
@@ -382,16 +427,15 @@ const routes: RouteDef[] = [
       try {
         body = await req.json();
       } catch {
-        return jsonError('Invalid JSON body', 400);
+        return corsError('Invalid JSON body', 400);
       }
 
       const { chatId, title, nickname, faction, contact, category, message } = body;
 
       if (!chatId || !title || !nickname || !category || !message) {
-        return jsonError('Missing required fields: chatId, title, nickname, category, message', 400);
+        return corsError('Missing required fields: chatId, title, nickname, category, message', 400);
       }
 
-      // Determine user_id if authenticated
       let userId: number | null = null;
       const token = extractToken(req);
       if (token) {
@@ -421,7 +465,6 @@ const routes: RouteDef[] = [
 
       const appealId = result.meta?.last_row_id ?? 0;
 
-      // If ban appeal, forward immediately
       if (isBanAppeal) {
         await sendToZapier(env, {
           id: appealId,
@@ -437,7 +480,7 @@ const routes: RouteDef[] = [
         });
       }
 
-      return jsonResponse({
+      return corsResponse({
         ok: true,
         chatId,
         forwardedAt: isBanAppeal ? new Date().toISOString() : null,
@@ -451,13 +494,13 @@ const routes: RouteDef[] = [
     pattern: /^\/api\/appeals$/,
     handler: async (req, env) => {
       const token = extractToken(req);
-      if (!token) return jsonError('Unauthorized', 401);
+      if (!token) return corsError('Unauthorized', 401);
 
       const user = await getUserByToken(env.DB, token);
-      if (!user) return jsonError('Unauthorized', 401);
+      if (!user) return corsError('Unauthorized', 401);
 
       if (await isBanned(env.DB, user.discord_id)) {
-        return jsonError('Your account has been banned from review', 403);
+        return corsError('Your account has been banned from review', 403);
       }
 
       const url = new URL(req.url);
@@ -476,7 +519,7 @@ const routes: RouteDef[] = [
         .bind(status, limit)
         .all<any>();
 
-      return jsonResponse(appeals.results);
+      return corsResponse(appeals.results);
     },
   },
 
@@ -487,10 +530,10 @@ const routes: RouteDef[] = [
     pattern: /^\/api\/appeals\/(\d+)\/verdicts$/,
     handler: async (req, env, params) => {
       const token = extractToken(req);
-      if (!token) return jsonError('Unauthorized', 401);
+      if (!token) return corsError('Unauthorized', 401);
 
       const user = await getUserByToken(env.DB, token);
-      if (!user) return jsonError('Unauthorized', 401);
+      if (!user) return corsError('Unauthorized', 401);
 
       const appealId = parseInt(params[0]);
 
@@ -506,7 +549,7 @@ const routes: RouteDef[] = [
         .bind(appealId)
         .all<any>();
 
-      return jsonResponse(verdicts.results);
+      return corsResponse(verdicts.results);
     },
   },
 
@@ -515,62 +558,58 @@ const routes: RouteDef[] = [
     pattern: /^\/api\/appeals\/(\d+)\/verdicts$/,
     handler: async (req, env, params) => {
       const token = extractToken(req);
-      if (!token) return jsonError('Unauthorized', 401);
+      if (!token) return corsError('Unauthorized', 401);
 
       const user = await getUserByToken(env.DB, token);
-      if (!user) return jsonError('Unauthorized', 401);
+      if (!user) return corsError('Unauthorized', 401);
 
       if (await isBanned(env.DB, user.discord_id)) {
-        return jsonError('Your account has been banned from review', 403);
+        return corsError('Your account has been banned from review', 403);
       }
 
       const appealId = parseInt(params[0]);
 
-      // Check appeal exists and is still pending
       const appeal = await env.DB
         .prepare('SELECT id, status, verdicts_count FROM appeals WHERE id = ?')
         .bind(appealId)
         .first<{ id: number; status: string; verdicts_count: number }>();
 
-      if (!appeal) return jsonError('Appeal not found', 404);
-      if (appeal.status !== 'pending') return jsonError('Appeal is no longer pending', 400);
+      if (!appeal) return corsError('Appeal not found', 404);
+      if (appeal.status !== 'pending') return corsError('Appeal is no longer pending', 400);
 
       let body: any;
       try {
         body = await req.json();
       } catch {
-        return jsonError('Invalid JSON body', 400);
+        return corsError('Invalid JSON body', 400);
       }
 
       const { verdict, reason } = body;
       if (!['guilty', 'not_guilty', 'insufficient_evidence'].includes(verdict)) {
-        return jsonError('Invalid verdict. Must be: guilty, not_guilty, insufficient_evidence', 400);
+        return corsError('Invalid verdict. Must be: guilty, not_guilty, insufficient_evidence', 400);
       }
 
-      // Check if user already voted
       const existing = await env.DB
         .prepare('SELECT 1 FROM verdicts WHERE appeal_id = ? AND user_id = ?')
         .bind(appealId, user.id)
         .first();
 
-      if (existing) return jsonError('You have already submitted a verdict for this appeal', 400);
+      if (existing) return corsError('You have already submitted a verdict for this appeal', 400);
 
       await env.DB
         .prepare('INSERT INTO verdicts (appeal_id, user_id, verdict, reason) VALUES (?, ?, ?, ?)')
         .bind(appealId, user.id, verdict, reason || null)
         .run();
 
-      // Update verdicts count
       const newCount = (appeal.verdicts_count || 0) + 1;
       await env.DB
         .prepare('UPDATE appeals SET verdicts_count = ? WHERE id = ?')
         .bind(newCount, appealId)
         .run();
 
-      // Check if we should forward to Zapier
       await checkAndForwardToZapier(env, appealId);
 
-      return jsonResponse({
+      return corsResponse({
         success: true,
         verdictsCount: newCount,
         forwarded: newCount >= 5,
@@ -589,18 +628,20 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    // CORS preflight
+    // CORS preflight for all paths
     if (method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // Try to match a route
     const matched = matchRoute(path, method, routes);
     if (matched) {
-      return withCors(await matched.handler(request, env, matched.params));
+      try {
+        return await matched.handler(request, env, matched.params);
+      } catch (err: any) {
+        return corsError(`Internal error: ${err.message}`, 500);
+      }
     }
 
-    // Fallback: 404
-    return withCors(jsonError('Not found', 404));
+    return corsError('Not found', 404);
   },
 };
