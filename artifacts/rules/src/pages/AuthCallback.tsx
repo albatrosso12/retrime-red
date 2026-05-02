@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
 
 export default function AuthCallback() {
-  const [, navigate] = useNavigate();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
     // Get token from URL hash (e.g., #token=...)
