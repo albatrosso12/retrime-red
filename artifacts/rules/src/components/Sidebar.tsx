@@ -1,8 +1,9 @@
 import { useLocation } from "wouter";
-import { Menu, Plus, Settings, MessageSquare, Trash2, Home as HomeIcon } from "lucide-react";
+import { Menu, Plus, Settings, MessageSquare, Trash2, Home as HomeIcon, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useChats } from "@/hooks/useChats";
+import { AuthButton } from "@/components/AuthButton";
 
 type Props = {
   expanded: boolean;
@@ -134,12 +135,23 @@ export function Sidebar({
       <div className="mt-auto pt-3 px-1 border-t border-[#282A2C]">
         <Button
           variant="ghost"
+          onClick={() => navigate("/review")}
+          className="w-full justify-start rounded-full text-sm font-normal text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] h-11 px-3 gap-3"
+        >
+          <Scale className="h-5 w-5 text-[#9AA0A6]" />
+          Рассмотрение жалоб
+        </Button>
+        <Button
+          variant="ghost"
           onClick={onOpenSettings}
           className="w-full justify-start rounded-full text-sm font-normal text-[#E3E3E3] hover:bg-[#282A2C] hover:text-[#E3E3E3] h-11 px-3 gap-3"
         >
           <Settings className="h-5 w-5 text-[#9AA0A6]" />
           Настройки
         </Button>
+      </div>
+      <div className="px-1 pb-3">
+        <AuthButton />
       </div>
     </div>
   );

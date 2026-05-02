@@ -175,6 +175,104 @@ export type SubmitAppealMutationBody = BodyType<AppealRequest>;
 export type SubmitAppealMutationError = ErrorType<ErrorResponse>;
 
 /**
+ * Discord OAuth - redirect to Discord
+ * @summary Start Discord OAuth
+ */
+export const getDiscordAuthUrl = () => {
+  return `/api/auth/discord`;
+};
+
+/**
+ * Get current user info
+ * @summary Get current user
+ */
+export const getCurrentUserUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getCurrentUser = async (
+  options?: RequestInit,
+): Promise<UserResponse> => {
+  return customFetch<UserResponse>(getCurrentUserUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+/**
+ * Logout current user
+ * @summary Logout
+ */
+export const logoutUrl = () => {
+  return `/api/auth/logout`;
+};
+
+export const logout = async (
+  options?: RequestInit,
+): Promise<{ success: boolean }> => {
+  return customFetch<{ success: boolean }>(logoutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+/**
+ * Submit a verdict on an appeal
+ * @summary Submit verdict
+ */
+export const submitVerdictUrl = (appealId: number) => {
+  return `/api/appeals/${appealId}/verdicts`;
+};
+
+export const submitVerdict = async (
+  appealId: number,
+  verdictBody: SubmitVerdictBody,
+  options?: RequestInit,
+): Promise<SubmitVerdictResponse> => {
+  return customFetch<SubmitVerdictResponse>(submitVerdictUrl(appealId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verdictBody),
+  });
+};
+
+/**
+ * Get verdicts for an appeal
+ * @summary Get verdicts
+ */
+export const getVerdictsUrl = (appealId: number) => {
+  return `/api/appeals/${appealId}/verdicts`;
+};
+
+export const getVerdicts = async (
+  appealId: number,
+  options?: RequestInit,
+): Promise<Verdict[]> => {
+  return customFetch<Verdict[]>(getVerdictsUrl(appealId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+/**
+ * Get all pending appeals for review
+ * @summary Get appeals for review
+ */
+export const getAppealsForReviewUrl = () => {
+  return `/api/appeals?status=pending`;
+};
+
+export const getAppealsForReview = async (
+  options?: RequestInit,
+): Promise<Appeal[]> => {
+  return customFetch<Appeal[]>(getAppealsForReviewUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+/**
  * @summary Submit a player appeal
  */
 export const useSubmitAppeal = <
