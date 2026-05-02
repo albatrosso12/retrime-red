@@ -12,5 +12,5 @@ database_id = "82f8a49b-6c9f-4651-8fe4-ca3afafc2383" # You'll create this via `w
 [vars]
 DISCORD_CLIENT_ID = "1499936916127088793"
 DISCORD_CLIENT_SECRET = "oUJQFiXn7s7tKm8DIAK9xGhefRkOYwu6"
-DISCORD_REDIRECT_URI = "https://discord.com/oauth2/authorize?client_id=1499936916127088793&response_type=code&redirect_uri=https%3A%2F%2Fretrime.korsetov2009.workers.dev%2Fauth%2Fdiscord%2Fcallback&scope=identify+email+guilds.join"
+DISCORD_REDIRECT_URI = "https://retrime.korsetov2009.workers.dev/auth/discord/callback"
 ZAP_URL = "https://hooks.zapier.com/hooks/catch/27410332/uva81ym/"
