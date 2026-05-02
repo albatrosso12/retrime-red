@@ -54,6 +54,29 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Proxy API requests to avoid CORS during development
+    proxy: {
+      // Proxy requests to the Worker
+      '/api': {
+        target: import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/'),
+        configure: (proxy, options) => {
+          // Add Authorization header from localStorage if available
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            const token = req.headers['authorization'] || '';
+            if (token) {
+              proxyReq.setHeader('Authorization', token as string);
+            }
+          });
+        },
+      },
+      '/auth': {
+        target: import.meta.env.VITE_API_URL || 'https://retrime.korsetov2009.workers.dev',
+        changeOrigin: true,
+        // No rewrite for auth paths
+      },
+    },
   },
   preview: {
     port,
