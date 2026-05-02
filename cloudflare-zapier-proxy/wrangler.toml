@@ -5,8 +5,8 @@ main = "src/index.ts"
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
-database_name = "balkan-rules-db"
-database_id = "your-d1-database-id" # You'll create this via `wrangler d1 create balkan-rules-db`
+database_name = "retrime"
+database_id = "82f8a49b-6c9f-4651-8fe4-ca3afafc2383" # You'll create this via `wrangler d1 create balkan-rules-db`
 
 # Environment variables for the worker
 [vars]
