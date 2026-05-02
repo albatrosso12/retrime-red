@@ -13,10 +13,10 @@ export default function AuthCallback() {
       if (token && token.length > 10) {
         localStorage.setItem('auth_token', token);
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        window.dispatchEvent(new CustomEvent('auth:token-changed'));
       }
     }
-    // Full page redirect to home
-    window.location.href = '/';
+    navigate('/');
   }, [navigate]);
 
   return (

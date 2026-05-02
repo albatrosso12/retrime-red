@@ -41,21 +41,29 @@ export default function ReviewAppealsPage() {
       navigate('/');
       return;
     }
-    getCurrentUser().catch((err) => {
-      if (err?.status === 401) {
-        localStorage.removeItem('auth_token');
-        navigate('/');
-      }
-    });
+    getCurrentUser()
+      .then((user) => {
+        if (!user || !user.id) {
+          localStorage.removeItem('auth_token');
+          navigate('/');
+        }
+      })
+      .catch((err) => {
+        if (err?.status === 401) {
+          localStorage.removeItem('auth_token');
+          navigate('/');
+        }
+      });
   }, [navigate]);
 
   const { data: appeals = [], isLoading, error } = useQuery({
     queryKey: ["appealsForReview"],
     queryFn: getAppealsForReview,
+    enabled: !!localStorage.getItem('auth_token'),
     retry: (failureCount, error: any) => {
       if (error?.status === 401) {
         localStorage.removeItem('auth_token');
-        navigate('/');
+        window.location.href = '/';
         return false;
       }
       return failureCount < 3;
@@ -65,11 +73,11 @@ export default function ReviewAppealsPage() {
   const { data: verdicts = [] } = useQuery({
     queryKey: ["verdicts", selectedAppeal?.id],
     queryFn: () => selectedAppeal ? getVerdicts(selectedAppeal.id) : Promise.resolve([]),
-    enabled: !!selectedAppeal,
+    enabled: !!selectedAppeal && !!localStorage.getItem('auth_token'),
     retry: (failureCount, error: any) => {
       if (error?.status === 401) {
         localStorage.removeItem('auth_token');
-        navigate('/');
+        window.location.href = '/';
         return false;
       }
       return failureCount < 3;
