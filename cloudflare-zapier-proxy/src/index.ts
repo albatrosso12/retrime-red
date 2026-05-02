@@ -6,6 +6,7 @@ interface Env {
   DISCORD_CLIENT_ID: string;
   DISCORD_CLIENT_SECRET: string;
   DISCORD_REDIRECT_URI: string;
+  FRONTEND_URL: string; // frontend origin, e.g. https://retrime.korsetov2009.workers.dev
   BACKEND_URL: string; // upstream backend URL
 }
 
@@ -156,6 +157,21 @@ export default {
       return Response.redirect(discordUrl.toString(), 302);
     }
 
+    // Handle /auth/callback (frontend route) - return a simple page that passes hash to frontend
+    if (request.method === 'GET' && path === '/auth/callback') {
+      // This route should be handled by the frontend SPA, but if the worker receives it,
+      // just return a basic HTML that redirects to the frontend origin with the same hash.
+      const origin = new URL(request.url).origin;
+      return new Response(
+        `<!DOCTYPE html>
+        <html><head>
+          <meta http-equiv="refresh" content="0; url=${origin}/#${new URL(request.url).hash.slice(1)}">
+          <script>window.location.href = '${origin}/' + window.location.hash;</script>
+        </head><body>Redirecting...</body></html>`,
+        { headers: { 'Content-Type': 'text/html' } }
+      );
+    }
+
     // GET /auth/discord/callback - handle OAuth callback
     if (request.method === 'GET' && (path === '/auth/discord/callback' || path === '/api/auth/discord/callback')) {
       const code = url.searchParams.get('code');
@@ -178,9 +194,8 @@ export default {
         await createSession(env.DB, sessionToken, userId);
 
         // Redirect to frontend with token in hash
-        const frontendUrl = new URL(env.DISCORD_REDIRECT_URI);
-        frontendUrl.pathname = '/auth/callback';
-        const redirectUrl = `${frontendUrl.toString().replace(/\/+$/, '')}/auth/callback#token=${sessionToken}`;
+        const frontendOrigin = env.FRONTEND_URL || new URL(env.DISCORD_REDIRECT_URI).origin;
+        const redirectUrl = `${frontendOrigin.replace(/\/+$/, '')}/auth/callback#token=${sessionToken}`;
 
         return new Response(null, {
           status: 302,
