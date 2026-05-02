@@ -1,9 +1,8 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Balkan Conflict Rules API
 servers:
   - url: /api
     description: Base API path
@@ -12,6 +11,10 @@ tags:
     description: Health operations
   - name: appeals
     description: Player appeals (обращения)
+  - name: auth
+    description: Authentication operations
+  - name: verdicts
+    description: Appeal verdict operations
 paths:
   /healthz:
     get:
@@ -59,13 +62,193 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "503":
-          description: Webhook is not configured on the server
+    get:
+      operationId: getAppealsForReview
+      tags: [appeals]
+      summary: Get appeals for review
+      description: Returns a list of appeals filtered by status. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            default: pending
+          description: Filter by status (pending, forwarded, etc.)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Maximum number of appeals to return
+      responses:
+        "200":
+          description: List of appeals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appeal"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Banned from review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /appeals/{appealId}/verdicts:
+    get:
+      operationId: getVerdicts
+      tags: [verdicts]
+      summary: Get verdicts for an appeal
+      description: Returns all verdicts for a specific appeal. Requires authentication.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: appealId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Appeal ID
+      responses:
+        "200":
+          description: List of verdicts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Verdict"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: submitVerdict
+      tags: [verdicts]
+      summary: Submit a verdict on an appeal
+      description: Submit a verdict (guilty, not_guilty, insufficient_evidence). Requires authentication. When 5 verdicts are collected, the appeal is forwarded to Zapier.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: appealId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Appeal ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitVerdictBody"
+      responses:
+        "200":
+          description: Verdict submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitVerdictResponse"
+        "400":
+          description: Invalid input or already voted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Banned from review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Appeal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/discord:
+    get:
+      operationId: discordAuth
+      tags: [auth]
+      summary: Start discord OAuth
+      description: Redirects the user to the Discord OAuth authorization page.
+      responses:
+        "302":
+          description: Redirect to Discord OAuth
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user
+      description: Returns the authenticated user's info. Requires Bearer token.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Banned from review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      description: Invalidates the current session.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Session token obtained from OAuth flow (passed in URL hash as #token=xxx)
   schemas:
     HealthStatus:
       type: object
@@ -130,10 +313,114 @@ components:
         forwardedAt:
           type: string
           format: date-time
+        id:
+          type: integer
       required:
         - ok
         - chatId
         - forwardedAt
+    Appeal:
+      type: object
+      properties:
+        id:
+          type: integer
+        chatId:
+          type: string
+        title:
+          type: string
+        nickname:
+          type: string
+        faction:
+          type: string
+          nullable: true
+        contact:
+          type: string
+          nullable: true
+        category:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+        verdictsCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - chatId
+        - title
+        - nickname
+        - category
+        - message
+        - status
+        - verdictsCount
+    Verdict:
+      type: object
+      properties:
+        id:
+          type: integer
+        verdict:
+          type: string
+          enum: [guilty, not_guilty, insufficient_evidence]
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        username:
+          type: string
+        userAvatar:
+          type: string
+          nullable: true
+      required:
+        - id
+        - verdict
+        - createdAt
+        - username
+    SubmitVerdictBody:
+      type: object
+      properties:
+        verdict:
+          type: string
+          enum: [guilty, not_guilty, insufficient_evidence]
+        reason:
+          type: string
+          maxLength: 2000
+      required:
+        - verdict
+    SubmitVerdictResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        verdictsCount:
+          type: integer
+        forwarded:
+          type: boolean
+      required:
+        - success
+        - verdictsCount
+        - forwarded
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        discordId:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        isAdmin:
+          type: boolean
+      required:
+        - id
+        - discordId
+        - username
+        - isAdmin
     ErrorResponse:
       type: object
       properties:

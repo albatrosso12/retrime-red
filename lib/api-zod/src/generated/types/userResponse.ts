@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface AppealResponse {
-  ok: boolean;
-  chatId: string;
-  forwardedAt: Date;
-  id?: number;
+export interface UserResponse {
+  id: number;
+  discordId: string;
+  username: string;
+  avatar?: string | null;
+  isAdmin: boolean;
 }

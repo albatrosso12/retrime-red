@@ -6,11 +6,11 @@ main = "src/index.ts"
 [[d1_databases]]
 binding = "DB"
 database_name = "retrime"
-database_id = "82f8a49b-6c9f-4651-8fe4-ca3afafc2383" # You'll create this via `wrangler d1 create balkan-rules-db`
+database_id = "82f8a49b-6c9f-4651-8fe4-ca3afafc2383"
 
-# Environment variables for the worker
+# Configuration variables
+# NOTE: DISCORD_CLIENT_SECRET and ZAP_URL should be set via `wrangler secret put` in production
 [vars]
 DISCORD_CLIENT_ID = "1499936916127088793"
-DISCORD_CLIENT_SECRET = "oUJQFiXn7s7tKm8DIAK9xGhefRkOYwu6"
 DISCORD_REDIRECT_URI = "https://retrime.korsetov2009.workers.dev/auth/discord/callback"
-ZAP_URL = "https://hooks.zapier.com/hooks/catch/27410332/uva81ym/"
+FRONTEND_URL = "https://retrime.pages.dev"

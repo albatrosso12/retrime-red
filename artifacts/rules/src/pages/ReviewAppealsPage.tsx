@@ -9,17 +9,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAppealsForReview, submitVerdict, getVerdicts, getCurrentUser, type Appeal, type Verdict } from "@workspace/api-client-react";
-
-const categories = [
-  "Жалоба на игрока",
-  "Жалоба на администратора",
-  "Предложение",
-  "Вопрос",
-  "Обжалование бана",
-  "Другое",
-  "Аппеляция на наказание",
-];
+import {
+  getAppealsForReview,
+  submitVerdict,
+  getVerdicts,
+  getCurrentUser,
+  type Appeal,
+  type Verdict,
+} from "@workspace/api-client-react";
 
 const verdictLabels: Record<string, { label: string; color: string; icon: any }> = {
   guilty: { label: "Виновен", color: "bg-red-500", icon: XCircle },
@@ -34,36 +31,35 @@ export default function ReviewAppealsPage() {
   const [verdict, setVerdict] = useState("guilty");
   const [reason, setReason] = useState("");
 
-  // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem("auth_token");
     if (!token) {
-      navigate('/');
+      navigate("/");
       return;
     }
     getCurrentUser()
       .then((user) => {
         if (!user || !user.id) {
-          localStorage.removeItem('auth_token');
-          navigate('/');
+          localStorage.removeItem("auth_token");
+          navigate("/");
         }
       })
       .catch((err) => {
         if (err?.status === 401) {
-          localStorage.removeItem('auth_token');
-          navigate('/');
+          localStorage.removeItem("auth_token");
+          navigate("/");
         }
       });
   }, [navigate]);
 
   const { data: appeals = [], isLoading, error } = useQuery({
     queryKey: ["appealsForReview"],
-    queryFn: getAppealsForReview,
-    enabled: !!localStorage.getItem('auth_token'),
+    queryFn: () => getAppealsForReview({ status: "pending" }),
+    enabled: !!localStorage.getItem("auth_token"),
     retry: (failureCount, error: any) => {
       if (error?.status === 401) {
-        localStorage.removeItem('auth_token');
-        window.location.href = '/';
+        localStorage.removeItem("auth_token");
+        window.location.href = "/";
         return false;
       }
       return failureCount < 3;
@@ -72,12 +68,12 @@ export default function ReviewAppealsPage() {
 
   const { data: verdicts = [] } = useQuery({
     queryKey: ["verdicts", selectedAppeal?.id],
-    queryFn: () => selectedAppeal ? getVerdicts(selectedAppeal.id) : Promise.resolve([]),
-    enabled: !!selectedAppeal && !!localStorage.getItem('auth_token'),
+    queryFn: () => (selectedAppeal ? getVerdicts(selectedAppeal.id) : Promise.resolve([])),
+    enabled: !!selectedAppeal && !!localStorage.getItem("auth_token"),
     retry: (failureCount, error: any) => {
       if (error?.status === 401) {
-        localStorage.removeItem('auth_token');
-        window.location.href = '/';
+        localStorage.removeItem("auth_token");
+        window.location.href = "/";
         return false;
       }
       return failureCount < 3;
@@ -133,12 +129,11 @@ export default function ReviewAppealsPage() {
 
         {error && (
           <div className="bg-red-500/20 border border-red-500 text-red-200 p-4 rounded-lg mb-6">
-            Ошибка загрузки жалоб
+            {(error as any)?.message || "Ошибка загрузки жалоб"}
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Appeals List */}
           <div className="lg:col-span-1 space-y-3">
             <h2 className="text-xl font-semibold mb-4">Ожидают рассмотрения</h2>
             {appeals.length === 0 ? (
@@ -168,7 +163,7 @@ export default function ReviewAppealsPage() {
                         </Badge>
                       </div>
                       <p className="text-sm text-[#9AA0A6] mb-2">
-                        {appeal.nickname} • {appeal.faction}
+                        {appeal.nickname} &bull; {appeal.faction}
                       </p>
                       <Badge className="bg-[#282A2C] text-[#9AA0A6]">
                         {appeal.category}
@@ -180,7 +175,6 @@ export default function ReviewAppealsPage() {
             )}
           </div>
 
-          {/* Appeal Details & Verdict */}
           <div className="lg:col-span-2">
             {selectedAppeal ? (
               <motion.div
@@ -205,7 +199,7 @@ export default function ReviewAppealsPage() {
                       </div>
                       <div>
                         <span className="text-[#9AA0A6]">Фракция:</span>
-                        <p className="text-[#E3E3E3]">{selectedAppeal.faction}</p>
+                        <p className="text-[#E3E3E3]">{selectedAppeal.faction || "—"}</p>
                       </div>
                       {selectedAppeal.contact && (
                         <div className="col-span-2">
@@ -221,7 +215,6 @@ export default function ReviewAppealsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Current Verdicts */}
                 {verdicts.length > 0 && (
                   <Card className="bg-[#1E1F20] border-[#282A2C]">
                     <CardHeader>
@@ -232,10 +225,15 @@ export default function ReviewAppealsPage() {
                         const VerdictIcon = verdictLabels[v.verdict]?.icon || HelpCircle;
                         return (
                           <div key={idx} className="flex items-start gap-3 p-3 bg-[#282A2C] rounded-lg">
-                            <VerdictIcon className={`h-5 w-5 mt-0.5 ${
-                              v.verdict === 'guilty' ? 'text-red-500' : 
-                              v.verdict === 'not_guilty' ? 'text-green-500' : 'text-yellow-500'
-                            }`} />
+                            <VerdictIcon
+                              className={`h-5 w-5 mt-0.5 ${
+                                v.verdict === "guilty"
+                                  ? "text-red-500"
+                                  : v.verdict === "not_guilty"
+                                    ? "text-green-500"
+                                    : "text-yellow-500"
+                              }`}
+                            />
                             <div className="flex-1">
                               <p className="font-medium">{verdictLabels[v.verdict]?.label || v.verdict}</p>
                               {v.reason && <p className="text-sm text-[#9AA0A6] mt-1">{v.reason}</p>}
@@ -247,7 +245,6 @@ export default function ReviewAppealsPage() {
                   </Card>
                 )}
 
-                {/* Submit Verdict */}
                 <Card className="bg-[#1E1F20] border-[#282A2C]">
                   <CardHeader>
                     <CardTitle>Вынести вердикт</CardTitle>

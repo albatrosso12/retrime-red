@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface AppealResponse {
-  ok: boolean;
-  chatId: string;
-  forwardedAt: Date;
-  id?: number;
-}
+export type Logout200 = {
+  success: boolean;
+};
