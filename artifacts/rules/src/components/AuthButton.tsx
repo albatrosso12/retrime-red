@@ -38,8 +38,8 @@ export function AuthButton() {
 
   const handleLogin = () => {
     // Simply redirect to Worker's Discord auth route
-    const workerUrl = import.meta.env.VITE_API_URL || "https://retrime.korsetov2009.workers.dev";
-    window.location.href = `${workerUrl}/auth/discord`;
+    // Hardcode Worker URL since it's fixed
+    window.location.href = "https://retrime.korsetov2009.workers.dev/auth/discord";
   };
 
   const handleLogout = () => {
