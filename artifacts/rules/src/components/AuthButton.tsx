@@ -37,8 +37,7 @@ export function AuthButton() {
   });
 
   const handleLogin = () => {
-    // Simply redirect to Worker's Discord auth route
-    // Hardcode Worker URL since it's fixed
+    // Super simple redirect - no variables, no logic
     window.location.href = "https://retrime.korsetov2009.workers.dev/auth/discord";
   };
 
