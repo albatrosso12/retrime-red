@@ -1,5 +1,5 @@
-// Cloudflare Worker - Balkan Conflict Rules Backend
-// Handles Discord OAuth, D1 DB, Appeals, Verdicts
+// Cloudflare Worker - Balkan Conflict Rules (Simplified for CORS debugging)
+// Handles CORS globally, no auth for now.
 
 interface Env {
   DB: D1Database;
@@ -9,392 +9,109 @@ interface Env {
   ZAP_URL: string;
 }
 
-// CORS headers
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-}
+// CORS headers - set globally
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
 
-// JSON response helper
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders(), 'Content-Type': 'application/json' }
+// Add CORS to any Response
+function withCors(response: Response): Response {
+  Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value as string);
   });
+  return response;
 }
 
-// Error response
-function errorResponse(message: string, status = 400) {
-  return jsonResponse({ error: message }, status);
+// JSON helper
+function json(data: any, status = 200): Response {
+  return withCors(
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
 }
 
-// Handle Discord OAuth login
-async function handleDiscordAuth(env: Env): Promise<Response> {
-  const url = new URL('https://discord.com/api/oauth2/authorize');
-  url.searchParams.set('client_id', env.DISCORD_CLIENT_ID);
-  url.searchParams.set('redirect_uri', env.DISCORD_REDIRECT_URI);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', 'identify email');
-  
-  return Response.redirect(url.toString(), 302);
-}
-
-// Handle Discord OAuth callback
-async function handleDiscordCallback(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const code = url.searchParams.get('code');
-  
-  if (!code) {
-    return errorResponse('No code provided', 400);
-  }
-
-  try {
-    // Exchange code for token
-    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: env.DISCORD_CLIENT_ID,
-        client_secret: env.DISCORD_CLIENT_SECRET,
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: env.DISCORD_REDIRECT_URI,
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      return errorResponse('Failed to exchange code', 500);
-    }
-
-    const tokenData = await tokenResponse.json() as { access_token: string };
-    
-    // Get user info
-    const userResponse = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
-    });
-
-    if (!userResponse.ok) {
-      return errorResponse('Failed to get user info', 500);
-    }
-
-    const discordUser = await userResponse.json() as {
-      id: string;
-      username: string;
-      discriminator: string;
-      avatar: string;
-      email?: string;
-    };
-
-    // Upsert user in D1
-    const existing = await env.DB.prepare('SELECT * FROM users WHERE discord_id = ?')
-      .bind(discordUser.id)
-      .first();
-
-    let userId;
-    if (existing) {
-      await env.DB.prepare(
-        'UPDATE users SET username = ?, discriminator = ?, avatar = ?, email = ?, updated_at = datetime(\'now\') WHERE discord_id = ?'
-      ).bind(discordUser.username, discordUser.discriminator, discordUser.avatar, discordUser.email || null, discordUser.id).run();
-      userId = existing.id;
-    } else {
-      const result = await env.DB.prepare(
-        'INSERT INTO users (discord_id, username, discriminator, avatar, email) VALUES (?, ?, ?, ?, ?)'
-      ).bind(discordUser.id, discordUser.username, discordUser.discriminator, discordUser.avatar, discordUser.email || null).run();
-      userId = result.meta.last_row_id;
-    }
-
-    // Create session cookie
-    const session = btoa(JSON.stringify({ userId, discordId: discordUser.id }));
-    
-    // Redirect back to the frontend site with session token in URL hash
-    // Using hash fragment because frontend and backend are on different subdomains
-    // Hash is not sent to server, only processed by client
-    return new Response(null, {
-      status: 302,
-      headers: {
-        'Location': `https://retrime.pages.dev/auth/callback#token=${session}`,
-      },
-    });
-
-  } catch (err: any) {
-    return errorResponse(`OAuth error: ${err.message}`, 500);
-  }
-}
-
-// Get current user from token in Authorization header
-async function handleGetMe(request: Request, env: Env): Promise<Response> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return errorResponse('Not authenticated', 401);
-  }
-
-  try {
-    const token = authHeader.substring(7); // Remove 'Bearer '
-    const session = JSON.parse(atob(token));
-    const user = await env.DB.prepare('SELECT * FROM users WHERE id = ?')
-      .bind(session.userId)
-      .first();
-
-    if (!user) return errorResponse('User not found', 401);
-
-    return jsonResponse({
-      id: user.id,
-      discordId: user.discord_id,
-      username: user.username,
-      avatar: user.avatar,
-      isAdmin: user.is_admin === 1
-    });
-  } catch {
-    return errorResponse('Invalid token', 401);
-  }
-}
-
-// Logout
-function handleLogout(): Response {
-  return new Response(JSON.stringify({ success: true }), {
-    headers: {
-      ...corsHeaders(),
-      'Content-Type': 'application/json',
-      'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
-    },
-  });
-}
-
-// Submit appeal
-async function handleSubmitAppeal(request: Request, env: Env): Promise<Response> {
-  if (!env.ZAP_URL) return errorResponse('Zapier URL not configured', 503);
-
-  try {
-    const body = await request.json() as any;
-    const { chatId, title, nickname, faction, contact, category, message } = body;
-
-    if (!title || !nickname || !category || !message) {
-      return errorResponse('Missing required fields', 400);
-    }
-
-    // If "Аппеляция на наказание", send directly to admin
-    if (category === 'Аппеляция на наказание') {
-      await fetch(env.ZAP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: 'balkan-rules-admin',
-          chatId, title, nickname, faction, contact, category, message,
-          priority: 'high',
-          forwardedAt: new Date().toISOString(),
-        }),
-      });
-      return jsonResponse({ ok: true, sentTo: 'admin' });
-    }
-
-    // Save to DB
-    const result = await env.DB.prepare(
-      'INSERT INTO appeals (chat_id, title, nickname, faction, contact, category, message, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(chatId, title, nickname, faction || null, contact || null, category, message, 'pending').run();
-
-    return jsonResponse({ ok: true, appealId: result.meta.last_row_id, sentTo: 'review' });
-
-  } catch (err: any) {
-    return errorResponse(`Failed to submit appeal: ${err.message}`, 500);
-  }
-}
-
-// Get appeals for review
-async function handleGetAppeals(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const status = url.searchParams.get('status') || 'pending';
-
-  try {
-    const { results } = await env.DB.prepare('SELECT * FROM appeals WHERE status = ? ORDER BY created_at DESC')
-      .bind(status)
-      .all();
-    return jsonResponse(results);
-  } catch (err: any) {
-    return errorResponse(`Failed to get appeals: ${err.message}`, 500);
-  }
-}
-
-// Submit verdict
-async function handleSubmitVerdict(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const match = url.pathname.match(/\/api\/appeals\/(\d+)\/verdicts/);
-  if (!match) return errorResponse('Invalid appeal ID', 400);
-
-  const appealId = match[1];
-
-  try {
-    // Get user from Authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return errorResponse('Not authenticated', 401);
-    }
-    const token = authHeader.substring(7);
-    const session = JSON.parse(atob(token));
-    
-    // Check if user is banned
-    const banned = await env.DB.prepare('SELECT * FROM banned_users WHERE discord_id = ?')
-      .bind(session.discordId)
-      .first();
-    if (banned) {
-      return errorResponse('You are banned from submitting verdicts', 403);
-    }
-
-    const body = await request.json() as any;
-    const { verdict, reason } = body;
-
-    if (!verdict) return errorResponse('Verdict is required', 400);
-
-    // Check if user already voted
-    const existingVote = await env.DB.prepare('SELECT * FROM verdicts WHERE appeal_id = ? AND user_id = ?')
-      .bind(appealId, session.userId)
-      .first();
-    if (existingVote) {
-      return errorResponse('You have already submitted a verdict for this appeal', 400);
-    }
-
-    // Insert verdict
-    await env.DB.prepare(
-      'INSERT INTO verdicts (appeal_id, user_id, verdict, reason) VALUES (?, ?, ?, ?)'
-    ).bind(appealId, session.userId, verdict, reason || null).run();
-
-    // Count verdicts
-    const { results: verdicts } = await env.DB.prepare('SELECT * FROM verdicts WHERE appeal_id = ?')
-      .bind(appealId)
-      .all();
-    
-    const verdictsCount = verdicts.length;
-
-    // Update appeal verdicts count
-    await env.DB.prepare('UPDATE appeals SET verdicts_count = ?, updated_at = datetime(\'now\') WHERE id = ?')
-      .bind(verdictsCount, appealId)
-      .run();
-
-    // If 5 verdicts collected, send to Zapier
-    if (verdictsCount >= 5) {
-      const appeal = await env.DB.prepare('SELECT * FROM appeals WHERE id = ?')
-        .bind(appealId)
-        .first();
-
-      if (appeal) {
-        // Get all verdicts with user info
-        const { results: fullVerdicts } = await env.DB.prepare(`
-          SELECT v.*, u.username, u.discord_id 
-          FROM verdicts v 
-          JOIN users u ON v.user_id = u.id 
-          WHERE v.appeal_id = ?
-        `).bind(appealId).all();
-
-        await fetch(env.ZAP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            source: 'balkan-rules-verdicts',
-            appealId: appeal.id,
-            title: appeal.title,
-            nickname: appeal.nickname,
-            faction: appeal.faction,
-            category: appeal.category,
-            message: appeal.message,
-            verdicts: fullVerdicts,
-            verdictsCount,
-            forwardedAt: new Date().toISOString(),
-          }),
-        });
-
-        await env.DB.prepare('UPDATE appeals SET status = ?, zapier_sent = 1, zapier_sent_at = datetime(\'now\') WHERE id = ?')
-          .bind('sent_to_admin', appealId)
-          .run();
-      }
-    }
-
-    return jsonResponse({ success: true, verdictsCount });
-
-  } catch (err: any) {
-    // If error is about unique constraint, it means user already voted
-    if (err.message && err.message.includes('UNIQUE')) {
-      return errorResponse('You have already submitted a verdict for this appeal', 400);
-    }
-    return errorResponse(`Failed to submit verdict: ${err.message}`, 500);
-  }
-}
-
-// Get verdicts for appeal
-async function handleGetVerdicts(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const match = url.pathname.match(/\/api\/appeals\/(\d+)\/verdicts/);
-  if (!match) return errorResponse('Invalid appeal ID', 400);
-
-  const appealId = match[1];
-
-  try {
-    const { results } = await env.DB.prepare('SELECT * FROM verdicts WHERE appeal_id = ?')
-      .bind(appealId)
-      .all();
-    return jsonResponse(results);
-  } catch (err: any) {
-    return errorResponse(`Failed to get verdicts: ${err.message}`, 500);
-  }
-}
-
-// Health check
-function handleHealthCheck(): Response {
-  return jsonResponse({ status: 'ok' });
+// Error helper
+function error(message: string, status = 400): Response {
+  return json({ error: message }, status);
 }
 
 // Main fetch handler
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
-
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // Route handling
-    if (path === '/auth/discord' && request.method === 'GET') {
-      return handleDiscordAuth(env);
+    // Handle CORS preflight (OPTIONS)
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+      });
     }
 
-    if (path === '/auth/discord/callback' && request.method === 'GET') {
-      return handleDiscordCallback(request, env);
-    }
-
-    if ((path === '/auth/me' || path === '/api/auth/me') && request.method === 'GET') {
-      return handleGetMe(request, env);
-    }
-
-    if ((path === '/auth/logout' || path === '/api/auth/logout') && request.method === 'POST') {
-      return handleLogout();
-    }
-
-    if (path === '/api/appeals' && request.method === 'POST') {
-      return handleSubmitAppeal(request, env);
-    }
-
-    if (path === '/api/appeals' && request.method === 'GET') {
-      return handleGetAppeals(request, env);
-    }
-
-    // Verdicts routes
-    const verdictMatch = path.match(/\/api\/appeals\/(\d+)\/verdicts/);
-    if (verdictMatch) {
-      if (request.method === 'POST') {
-        return handleSubmitVerdict(request, env);
+    // Debug: return something for any GET
+    if (request.method === 'GET') {
+      // For /auth/me - return test user without auth
+      if (path === '/auth/me' || path === '/api/auth/me') {
+        return json({
+          id: 1,
+          discordId: '714158854551765112',
+          username: 'eyenosee',
+          avatar: 'ed5b8d717879f0bfc6400b66b3229bc7',
+          isAdmin: false
+        });
       }
-      if (request.method === 'GET') {
-        return handleGetVerdicts(request, env);
+
+      // For /auth/discord - redirect to Discord
+      if (path === '/auth/discord') {
+        const discordUrl = new URL('https://discord.com/api/oauth2/authorize');
+        discordUrl.searchParams.set('client_id', env.DISCORD_CLIENT_ID);
+        discordUrl.searchParams.set('redirect_uri', env.DISCORD_REDIRECT_URI);
+        discordUrl.searchParams.set('response_type', 'code');
+        discordUrl.searchParams.set('scope', 'identify email');
+        return Response.redirect(discordUrl.toString(), 302);
+      }
+
+      // For /auth/discord/callback - handle OAuth
+      if (path === '/auth/discord/callback') {
+        const code = url.searchParams.get('code');
+        if (!code) return error('No code', 400);
+        
+        // Exchange code for token (simplified, no DB for now)
+        return withCors(new Response(null, {
+          status: 302,
+          headers: {
+            'Location': `https://retrime.pages.dev/auth/callback#token=test_token`,
+          },
+        }));
+      }
+
+      // Default response
+      return json({ message: 'Worker is up', path });
+    }
+
+    // For POST requests
+    if (request.method === 'POST') {
+      // For /auth/logout
+      if (path === '/auth/logout' || path === '/api/auth/logout') {
+        return json({ success: true });
+      }
+
+      // For /api/appeals
+      if (path === '/api/appeals') {
+        return json({ ok: true, message: 'Appeal submitted (simplified)' });
+      }
+
+      // For verdicts
+      if (path.match(/\/api\/appeals\/\d+\/verdicts/)) {
+        return json({ success: true, verdictsCount: 1 });
       }
     }
 
-    if (path === '/api/healthz' && request.method === 'GET') {
-      return handleHealthCheck();
-    }
-
-    return errorResponse('Not found', 404);
+    return error('Not found', 404);
   }
 };
